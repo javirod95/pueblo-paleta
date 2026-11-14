@@ -173,13 +173,14 @@
     var all = tasks();
     var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(byDate);
     var pending = all.filter(function (t) { return !t.done; }).length;
-    var used = {}; all.forEach(function (t) { if (t.cat) used[t.cat] = true; });
-    var cats = CAT_LIST.filter(function (c) { return used[c]; });
-    Object.keys(used).forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
+    var cnt = {}; all.forEach(function (t) { if (t.cat && !t.done) cnt[t.cat] = (cnt[t.cat] || 0) + 1; });
+    var cats = CAT_LIST.slice();
+    Object.keys(cnt).forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
     var h = '<div class="hero"><div class="hero-in"><div><h1>Pueblo Paleta</h1><div class="sub">' + pending + ' pendiente' + (pending === 1 ? '' : 's') + '</div></div>' +
       '<button class="btn light" data-act="new">+ Nueva</button></div></div><div class="wrap">';
-    h += '<div class="filters"><select class="catsel" data-act="catfilter"><option value="Todas">Todas las categorías</option>' +
-      cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === filter ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+    h += '<div class="chips"><button class="chip' + (filter === 'Todas' ? ' on' : '') + '" data-act="filter" data-v="Todas">Todas <b>' + pending + '</b></button>' +
+      cats.map(function (c) { return '<button class="chip' + (c === filter ? ' on' : '') + '" data-act="filter" data-v="' + esc(c) + '"><span class="dot" style="background:' + catColor(c) + '"></span>' + esc(c) + (cnt[c] ? ' <b>' + cnt[c] + '</b>' : '') + '</button>'; }).join('') +
+      '</div><div class="filters">' +
       '<label class="toggle"><input type="checkbox" data-act="hide"' + (hideDone ? ' checked' : '') + '> Ocultar hechas</label></div><div class="list">';
     if (!list.length) h += '<div class="empty">' + (all.length ? 'No hay tareas con este filtro.' : 'Aún no hay tareas. Pulsa “+” para crear la primera.') + '</div>';
     list.forEach(function (t) {
@@ -259,7 +260,7 @@
     var el = ev.target.closest('[data-act]'); if (!el) return;
     var a = el.dataset.act, id = el.dataset.id;
     if (a === 'hide') return;
-    if (a === 'filter') { filter = el.dataset.v; render(); return; }
+    if (a === 'filter') { var sx = document.querySelector('.chips'); var keep = sx ? sx.scrollLeft : 0; filter = el.dataset.v; render(); var nx = document.querySelector('.chips'); if (nx) nx.scrollLeft = keep; return; }
     if (a === 'new') { openForm(null, null); return; }
     if (a === 'newsub') { openForm(null, id); return; }
     if (a === 'edit') { ev.stopPropagation(); openForm(id); return; }
@@ -273,7 +274,6 @@
     if (a === 'logout') { session = null; lsSet(LS.sess, null); loginError = ''; render(); return; }
   });
   document.addEventListener('change', function (ev) {
-    if (ev.target.dataset && ev.target.dataset.act === 'catfilter') { filter = ev.target.value; render(); return; }
     if (ev.target.dataset && ev.target.dataset.act === 'hide') { hideDone = ev.target.checked; lsSet(LS.hide, hideDone); render(); }
   });
   document.addEventListener('submit', function (ev) {

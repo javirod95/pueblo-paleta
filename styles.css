@@ -62,4 +62,9 @@ input:focus,select:focus{outline:2px solid #cfe6c9;border-color:var(--green)}
 .login p{color:var(--muted);font-size:14px;margin:0 0 8px}
 .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
 @media(max-width:520px){.title{font-size:18px}.subs{padding-left:18px}.sr{flex-wrap:wrap}.sr .meta{width:100%;padding-left:32px}.hero{height:160px}.hero h1{font-size:26px}}
-.catsel{width:auto;max-width:62%;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:0 -18px 12px;padding:2px 18px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chips .chip{flex:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.chip b{font-weight:600;opacity:.6;font-size:12px}
+.chip.on .dot{box-shadow:0 0 0 2px #fff}
+@media(min-width:700px){.chips{flex-wrap:wrap;overflow:visible;margin:0 0 12px;padding:0}}
