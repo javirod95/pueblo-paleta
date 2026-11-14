@@ -68,3 +68,5 @@ input:focus,select:focus{outline:2px solid #cfe6c9;border-color:var(--green)}
 .chip b{font-weight:600;opacity:.6;font-size:12px}
 .chip.on .dot{box-shadow:0 0 0 2px #fff}
 @media(min-width:700px){.chips{flex-wrap:wrap;overflow:visible;margin:0 0 12px;padding:0}}
+.sortby{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:0}
+.sortby select{width:auto;padding:7px 30px 7px 12px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink)}

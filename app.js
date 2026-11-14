@@ -29,6 +29,7 @@
   var session = lsGet(LS.sess, null);
   var open = lsGet(LS.open, {});
   var hideDone = lsGet(LS.hide, false);
+  var sortBy = lsGet('pp-sort', 'cat');
   var filter = 'Todas', editing = null, loginError = '';
   var syncState = 'idle', syncing = false, syncAgain = false, syncTimer = null;
 
@@ -38,13 +39,20 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function today() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function fdate(s) { if (!s) return 'Sin fecha'; var p = s.split('-'); return parseInt(p[2], 10) + ' ' + MESES[parseInt(p[1], 10) - 1]; }
-  function byDate(a, b) {
-    if (!!a.done !== !!b.done) return a.done ? 1 : -1;
-    var x = a.date || '9999', y = b.date || '9999';
-    if (x !== y) return x < y ? -1 : 1;
-    var p = (PRIO_ORDER[a.prio] || 0) - (PRIO_ORDER[b.prio] || 0);
-    return p || catIdx(a.cat) - catIdx(b.cat) || String(a.title).localeCompare(String(b.title));
+  function cmpDone(a, b) { return !!a.done === !!b.done ? 0 : (a.done ? 1 : -1); }
+  function cmpPrio(a, b) { return (PRIO_ORDER[a.prio] == null ? 9 : PRIO_ORDER[a.prio]) - (PRIO_ORDER[b.prio] == null ? 9 : PRIO_ORDER[b.prio]); }
+  function cmpCat(a, b) { return catIdx(a.cat) - catIdx(b.cat); }
+  function cmpDate(a, b) { var x = a.date || '9999', y = b.date || '9999'; return x < y ? -1 : x > y ? 1 : 0; }
+  function cmpTitle(a, b) { return String(a.title).localeCompare(String(b.title), 'es'); }
+  // Tareas: por categoría (orden de la lista) o por prioridad. Las completadas siempre al final.
+  function sortTasks(a, b) {
+    return cmpDone(a, b) || (sortBy === 'prio'
+      ? cmpPrio(a, b) || cmpCat(a, b) || cmpDate(a, b) || cmpTitle(a, b)
+      : cmpCat(a, b) || cmpPrio(a, b) || cmpDate(a, b) || cmpTitle(a, b));
   }
+  // Subtareas: por prioridad y luego fecha.
+  function sortSubs(a, b) { return cmpDone(a, b) || cmpPrio(a, b) || cmpDate(a, b) || cmpTitle(a, b); }
+
 
   /* ---------- Auth (API REST de Supabase, sin librerías para que funcione offline) ---------- */
   function authCall(grant, body) {
@@ -171,7 +179,7 @@
   function render() {
     if (!session) { renderLogin(); return; }
     var all = tasks();
-    var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(byDate);
+    var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(sortTasks);
     var pending = all.filter(function (t) { return !t.done; }).length;
     var cnt = {}; all.forEach(function (t) { if (t.cat && !t.done) cnt[t.cat] = (cnt[t.cat] || 0) + 1; });
     var cats = CAT_LIST.slice();
@@ -180,11 +188,13 @@
       '<button class="btn light" data-act="new">+ Nueva</button></div></div><div class="wrap">';
     h += '<div class="chips"><button class="chip' + (filter === 'Todas' ? ' on' : '') + '" data-act="filter" data-v="Todas">Todas <b>' + pending + '</b></button>' +
       cats.map(function (c) { return '<button class="chip' + (c === filter ? ' on' : '') + '" data-act="filter" data-v="' + esc(c) + '"><span class="dot" style="background:' + catColor(c) + '"></span>' + esc(c) + (cnt[c] ? ' <b>' + cnt[c] + '</b>' : '') + '</button>'; }).join('') +
-      '</div><div class="filters">' +
+      '</div><div class="filters"><label class="sortby">Ordenar por <select data-act="sort">' +
+      '<option value="cat"' + (sortBy === 'cat' ? ' selected' : '') + '>Categoría</option>' +
+      '<option value="prio"' + (sortBy === 'prio' ? ' selected' : '') + '>Prioridad</option></select></label>' +
       '<label class="toggle"><input type="checkbox" data-act="hide"' + (hideDone ? ' checked' : '') + '> Ocultar hechas</label></div><div class="list">';
     if (!list.length) h += '<div class="empty">' + (all.length ? 'No hay tareas con este filtro.' : 'Aún no hay tareas. Pulsa “+” para crear la primera.') + '</div>';
     list.forEach(function (t) {
-      var subs = subsOf(t.id).sort(byDate);
+      var subs = subsOf(t.id).sort(sortSubs);
       var dn = subs.filter(function (s) { return s.done; }).length;
       var cnt = subs.length ? '<span class="m">☑ ' + dn + '/' + subs.length + '</span>' : '';
       h += '<div class="card' + (t.done ? ' done' : '') + (open[t.id] ? ' open' : '') + '" data-id="' + t.id + '">' +
@@ -274,6 +284,7 @@
     if (a === 'logout') { session = null; lsSet(LS.sess, null); loginError = ''; render(); return; }
   });
   document.addEventListener('change', function (ev) {
+    if (ev.target.dataset && ev.target.dataset.act === 'sort') { sortBy = ev.target.value; lsSet('pp-sort', sortBy); render(); return; }
     if (ev.target.dataset && ev.target.dataset.act === 'hide') { hideDone = ev.target.checked; lsSet(LS.hide, hideDone); render(); }
   });
   document.addEventListener('submit', function (ev) {
