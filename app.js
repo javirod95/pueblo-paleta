@@ -182,8 +182,11 @@
     var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(sortTasks);
     var pending = all.filter(function (t) { return !t.done; }).length;
     var cnt = {}; all.forEach(function (t) { if (t.cat && !t.done) cnt[t.cat] = (cnt[t.cat] || 0) + 1; });
-    var cats = CAT_LIST.slice();
-    Object.keys(cnt).forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
+    // Solo categorías con tareas (si se ocultan las hechas, solo las que tienen pendientes).
+    var has = {}; all.forEach(function (t) { if (t.cat && !(hideDone && t.done)) has[t.cat] = true; });
+    var cats = CAT_LIST.filter(function (c) { return has[c]; });
+    Object.keys(has).forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
+    if (filter !== 'Todas' && !has[filter]) { filter = 'Todas'; list = all.filter(function (t) { return !(hideDone && t.done); }).sort(sortTasks); }
     var h = '<div class="hero"><div class="hero-in"><div><h1>Pueblo Paleta</h1><div class="sub">' + pending + ' pendiente' + (pending === 1 ? '' : 's') + '</div></div>' +
       '<button class="btn light" data-act="new">+ Nueva</button></div></div><div class="wrap">';
     h += '<div class="chips"><button class="chip' + (filter === 'Todas' ? ' on' : '') + '" data-act="filter" data-v="Todas">Todas <b>' + pending + '</b></button>' +
