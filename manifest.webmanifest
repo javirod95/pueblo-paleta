@@ -1,0 +1,16 @@
+{
+  "name": "Pueblo Paleta",
+  "short_name": "Pueblo Paleta",
+  "description": "Lista de tareas de Javi, con subtareas, que funciona sin conexión.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6ee",
+  "theme_color": "#3f7d3a",
+  "orientation": "portrait",
+  "lang": "es",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
