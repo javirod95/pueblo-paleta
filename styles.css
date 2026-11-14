@@ -62,3 +62,4 @@ input:focus,select:focus{outline:2px solid #cfe6c9;border-color:var(--green)}
 .login p{color:var(--muted);font-size:14px;margin:0 0 8px}
 .err{color:var(--danger);font-size:13px;min-height:18px;margin-top:10px}
 @media(max-width:520px){.title{font-size:18px}.subs{padding-left:18px}.sr{flex-wrap:wrap}.sr .meta{width:100%;padding-left:32px}.hero{height:160px}.hero h1{font-size:26px}}
+.catsel{width:auto;max-width:62%;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500}

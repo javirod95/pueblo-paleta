@@ -1,5 +1,5 @@
 /* Pueblo Paleta — service worker. Sube VERSION al cambiar cualquier archivo de la app. */
-const VERSION = 'pp-v1.0.0';
+const VERSION = 'pp-v1.1.0';
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './config.js', './manifest.webmanifest',
   './assets/pueblo-paleta.png', './assets/icon-180.png', './assets/icon-192.png', './assets/icon-512.png'

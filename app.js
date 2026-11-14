@@ -7,7 +7,13 @@
   var CFG = window.PP_CONFIG || {};
   var SB = CFG.supabaseUrl, KEY = CFG.supabaseAnonKey;
 
-  var CATS = { Trabajo: '#2f6fde', Personal: '#2e9d62', Casa: '#d9822b', Finanzas: '#8a4fd1' };
+  var CAT_LIST = ['00. JAVIER', '01. ATOCHA', '02. CIUDAD VERDE', '03. COMPRAS', '04. FAMILYLINKING', '05. AMIGOS',
+    '06. FOTOS', '07. CULTURA Y FRIKERÍAS', '08. HERRAMIENTAS', '09. MÉDICOS', '10. MIS PROYECTOS', '11. VIAJES Y PLANES',
+    '12. CITAS NO MÉDICAS', '13. IT', 'I. FINANZAS, BANCOS E INVERSIONES', 'II. COSAS DE CASA', 'III. FORMACIÓN',
+    'IV. GESTIONES', 'V. TRABAJO', 'VI. PROYECTOS', 'Z. OTROS'];
+  var PALETTE = ['#2f6fde', '#2e9d62', '#d9822b', '#8a4fd1', '#d64545', '#1aa3a3', '#c2569b', '#7a8b2c', '#b5762a', '#4f5bd5', '#5b8c5a'];
+  function catColor(c) { var i = CAT_LIST.indexOf(c); return i < 0 ? '#999' : PALETTE[i % PALETTE.length]; }
+  function catIdx(c) { var i = CAT_LIST.indexOf(c); return i < 0 ? 999 : i; }
   var PRIOS = { Alta: ['#c23b3b', '#fdecec'], Media: ['#a86a00', '#fdf3dc'], Baja: ['#5f6b7a', '#eef0f3'] };
   var PRIO_ORDER = { Alta: 0, Media: 1, Baja: 2 };
   var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -35,7 +41,9 @@
   function byDate(a, b) {
     if (!!a.done !== !!b.done) return a.done ? 1 : -1;
     var x = a.date || '9999', y = b.date || '9999';
-    return x < y ? -1 : x > y ? 1 : (PRIO_ORDER[a.prio] || 0) - (PRIO_ORDER[b.prio] || 0);
+    if (x !== y) return x < y ? -1 : 1;
+    var p = (PRIO_ORDER[a.prio] || 0) - (PRIO_ORDER[b.prio] || 0);
+    return p || catIdx(a.cat) - catIdx(b.cat) || String(a.title).localeCompare(String(b.title));
   }
 
   /* ---------- Auth (API REST de Supabase, sin librerías para que funcione offline) ---------- */
@@ -139,7 +147,7 @@
   /* ---------- Render ---------- */
   function meta(item, cat, extra) {
     var h = '';
-    if (cat) h += '<span class="m"><span class="dot" style="background:' + (CATS[cat] || '#999') + '"></span>' + esc(cat) + '</span>';
+    if (cat) h += '<span class="m"><span class="dot" style="background:' + catColor(cat) + '"></span>' + esc(cat) + '</span>';
     var p = PRIOS[item.prio] || PRIOS.Baja;
     h += '<span class="m"><span class="pill" style="color:' + p[0] + ';background:' + p[1] + '">' + esc(item.prio) + '</span></span>';
     var late = item.date && !item.done && item.date < today();
@@ -165,10 +173,13 @@
     var all = tasks();
     var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(byDate);
     var pending = all.filter(function (t) { return !t.done; }).length;
-    var cats = ['Todas'].concat(Object.keys(CATS));
+    var used = {}; all.forEach(function (t) { if (t.cat) used[t.cat] = true; });
+    var cats = CAT_LIST.filter(function (c) { return used[c]; });
+    Object.keys(used).forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
     var h = '<div class="hero"><div class="hero-in"><div><h1>Pueblo Paleta</h1><div class="sub">' + pending + ' pendiente' + (pending === 1 ? '' : 's') + '</div></div>' +
       '<button class="btn light" data-act="new">+ Nueva</button></div></div><div class="wrap">';
-    h += '<div class="filters">' + cats.map(function (c) { return '<button class="chip' + (c === filter ? ' on' : '') + '" data-act="filter" data-v="' + c + '">' + c + '</button>'; }).join('') +
+    h += '<div class="filters"><select class="catsel" data-act="catfilter"><option value="Todas">Todas las categorías</option>' +
+      cats.map(function (c) { return '<option value="' + esc(c) + '"' + (c === filter ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
       '<label class="toggle"><input type="checkbox" data-act="hide"' + (hideDone ? ' checked' : '') + '> Ocultar hechas</label></div><div class="list">';
     if (!list.length) h += '<div class="empty">' + (all.length ? 'No hay tareas con este filtro.' : 'Aún no hay tareas. Pulsa “+” para crear la primera.') + '</div>';
     list.forEach(function (t) {
@@ -211,12 +222,12 @@
     var it = id ? items[id] : null;
     var isSub = it ? !!it.parent_id : !!parentId;
     var parent = items[(it && it.parent_id) || parentId];
-    var v = it || { title: '', cat: filter !== 'Todas' ? filter : 'Trabajo', prio: 'Media', date: '' };
+    var v = it || { title: '', cat: filter !== 'Todas' ? filter : 'Z. OTROS', prio: 'Media', date: '' };
     editing = { id: id, parentId: parentId, isSub: isSub };
     var opt = function (list, val) { return list.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + o + '</option>'; }).join(''); };
     var f = '<h2>' + (it ? 'Editar ' : 'Nueva ') + (isSub ? 'subtarea' : 'tarea') + (isSub && parent ? '<div class="sub">en “' + esc(parent.title) + '”</div>' : '') + '</h2>' +
       '<label class="f">Título</label><input name="title" required value="' + esc(v.title) + '" placeholder="¿Qué hay que hacer?">' +
-      (isSub ? '' : '<label class="f">Categoría</label><select name="cat">' + opt(Object.keys(CATS), v.cat) + '</select>') +
+      (isSub ? '' : '<label class="f">Categoría</label><select name="cat">' + opt(CAT_LIST, v.cat) + '</select>') +
       '<div class="row2"><div><label class="f">Prioridad</label><select name="prio">' + opt(['Alta', 'Media', 'Baja'], v.prio) + '</select></div>' +
       '<div><label class="f">Fecha</label><input type="date" name="date" value="' + esc(v.date || '') + '"></div></div>' +
       '<div class="actions">' + (it ? '<button type="button" class="btn danger" data-act="del">Eliminar</button>' : '') +
@@ -262,6 +273,7 @@
     if (a === 'logout') { session = null; lsSet(LS.sess, null); loginError = ''; render(); return; }
   });
   document.addEventListener('change', function (ev) {
+    if (ev.target.dataset && ev.target.dataset.act === 'catfilter') { filter = ev.target.value; render(); return; }
     if (ev.target.dataset && ev.target.dataset.act === 'hide') { hideDone = ev.target.checked; lsSet(LS.hide, hideDone); render(); }
   });
   document.addEventListener('submit', function (ev) {
