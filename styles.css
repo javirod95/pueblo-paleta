@@ -70,3 +70,7 @@ input:focus,select:focus{outline:2px solid #cfe6c9;border-color:var(--green)}
 @media(min-width:700px){.chips{flex-wrap:wrap;overflow:visible;margin:0 0 12px;padding:0}}
 .sortby{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:0}
 .sortby select{width:auto;padding:7px 30px 7px 12px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink)}
+.when{display:flex;gap:8px;margin-bottom:10px}
+.wchip{flex:1;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:6px}
+.wchip b{font-weight:600;opacity:.55;font-size:12px}
+.wchip.on{background:#e4f1df;border-color:var(--green);color:#24561f}

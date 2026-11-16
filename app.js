@@ -30,6 +30,7 @@
   var open = lsGet(LS.open, {});
   var hideDone = lsGet(LS.hide, false);
   var sortBy = lsGet('pp-sort', 'cat');
+  var when = 'all';   // 'all' | 'hoy' | 'semana' — se combina con el filtro de categoría
   var filter = 'Todas', editing = null, loginError = '';
   var syncState = 'idle', syncing = false, syncAgain = false, syncTimer = null;
 
@@ -51,6 +52,17 @@
       : cmpCat(a, b) || cmpPrio(a, b) || cmpDate(a, b) || cmpTitle(a, b));
   }
   // Subtareas: por prioridad y luego fecha.
+  function endOfWeek() {   // domingo de esta semana (lunes a domingo)
+    var d = new Date(); var dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() + (6 - dow));
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // Tarea pendiente con fecha <= límite, o con alguna subtarea pendiente con fecha <= límite
+  function dueBy(t, limit) {
+    if (t.done) return false;
+    if (t.date && t.date <= limit) return true;
+    return subsOf(t.id).some(function (s) { return !s.done && s.date && s.date <= limit; });
+  }
+  function subDueBy(t, limit) { return subsOf(t.id).some(function (s) { return !s.done && s.date && s.date <= limit; }); }
   function sortSubs(a, b) { return cmpDone(a, b) || cmpPrio(a, b) || cmpDate(a, b) || cmpTitle(a, b); }
 
 
@@ -179,7 +191,11 @@
   function render() {
     if (!session) { renderLogin(); return; }
     var all = tasks();
-    var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done); }).sort(sortTasks);
+    var limHoy = today(), limSem = endOfWeek();
+    var nHoy = all.filter(function (t) { return dueBy(t, limHoy); }).length;
+    var nSem = all.filter(function (t) { return dueBy(t, limSem); }).length;
+    var lim = when === 'hoy' ? limHoy : when === 'semana' ? limSem : null;
+    var list = all.filter(function (t) { return (filter === 'Todas' || t.cat === filter) && !(hideDone && t.done) && (!lim || dueBy(t, lim)); }).sort(sortTasks);
     var pending = all.filter(function (t) { return !t.done; }).length;
     var cnt = {}; all.forEach(function (t) { if (t.cat && !t.done) cnt[t.cat] = (cnt[t.cat] || 0) + 1; });
     // Solo categorías con tareas (si se ocultan las hechas, solo las que tienen pendientes).
@@ -189,18 +205,20 @@
     if (filter !== 'Todas' && !has[filter]) { filter = 'Todas'; list = all.filter(function (t) { return !(hideDone && t.done); }).sort(sortTasks); }
     var h = '<div class="hero"><div class="hero-in"><div><h1>Pueblo Paleta</h1><div class="sub">' + pending + ' pendiente' + (pending === 1 ? '' : 's') + '</div></div>' +
       '<button class="btn light" data-act="new">+ Nueva</button></div></div><div class="wrap">';
+    h += '<div class="when"><button class="wchip' + (when === 'hoy' ? ' on' : '') + '" data-act="when" data-v="hoy">📌 Hoy <b>' + nHoy + '</b></button>' +
+      '<button class="wchip' + (when === 'semana' ? ' on' : '') + '" data-act="when" data-v="semana">🗓️ Esta semana <b>' + nSem + '</b></button></div>';
     h += '<div class="chips"><button class="chip' + (filter === 'Todas' ? ' on' : '') + '" data-act="filter" data-v="Todas">Todas <b>' + pending + '</b></button>' +
       cats.map(function (c) { return '<button class="chip' + (c === filter ? ' on' : '') + '" data-act="filter" data-v="' + esc(c) + '"><span class="dot" style="background:' + catColor(c) + '"></span>' + esc(c) + (cnt[c] ? ' <b>' + cnt[c] + '</b>' : '') + '</button>'; }).join('') +
       '</div><div class="filters"><label class="sortby">Ordenar por <select data-act="sort">' +
       '<option value="cat"' + (sortBy === 'cat' ? ' selected' : '') + '>Categoría</option>' +
       '<option value="prio"' + (sortBy === 'prio' ? ' selected' : '') + '>Prioridad</option></select></label>' +
       '<label class="toggle"><input type="checkbox" data-act="hide"' + (hideDone ? ' checked' : '') + '> Ocultar hechas</label></div><div class="list">';
-    if (!list.length) h += '<div class="empty">' + (all.length ? 'No hay tareas con este filtro.' : 'Aún no hay tareas. Pulsa “+” para crear la primera.') + '</div>';
+    if (!list.length) h += '<div class="empty">' + (lim ? (when === 'hoy' ? 'Nada para hoy. ¡Buen trabajo!' : 'Nada pendiente esta semana.') : all.length ? 'No hay tareas con este filtro.' : 'Aún no hay tareas. Pulsa “+” para crear la primera.') + '</div>';
     list.forEach(function (t) {
       var subs = subsOf(t.id).sort(sortSubs);
       var dn = subs.filter(function (s) { return s.done; }).length;
       var cnt = subs.length ? '<span class="m">☑ ' + dn + '/' + subs.length + '</span>' : '';
-      h += '<div class="card' + (t.done ? ' done' : '') + (open[t.id] ? ' open' : '') + '" data-id="' + t.id + '">' +
+      h += '<div class="card' + (t.done ? ' done' : '') + ((open[t.id] || (lim && subDueBy(t, lim))) ? ' open' : '') + '" data-id="' + t.id + '">' +
         '<div class="card-main" data-act="expand" data-id="' + t.id + '">' +
         '<button class="check' + (t.done ? ' on' : '') + '" data-act="toggle" data-id="' + t.id + '" aria-label="Completar">' + (t.done ? '✓' : '') + '</button>' +
         '<div class="body"><div class="title">' + esc(t.title) + '</div><div class="meta">' + meta(t, t.cat, cnt) + '</div></div>' +
@@ -273,6 +291,7 @@
     var el = ev.target.closest('[data-act]'); if (!el) return;
     var a = el.dataset.act, id = el.dataset.id;
     if (a === 'hide') return;
+    if (a === 'when') { when = when === el.dataset.v ? 'all' : el.dataset.v; render(); return; }
     if (a === 'filter') { var sx = document.querySelector('.chips'); var keep = sx ? sx.scrollLeft : 0; filter = el.dataset.v; render(); var nx = document.querySelector('.chips'); if (nx) nx.scrollLeft = keep; return; }
     if (a === 'new') { openForm(null, null); return; }
     if (a === 'newsub') { openForm(null, id); return; }
